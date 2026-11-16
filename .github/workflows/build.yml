@@ -1,0 +1,81 @@
+name: Build and smoke test
+
+# Запускается при каждом push и вручную (вкладка Actions -> Run workflow)
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Build
+        run: mvn -B package -DskipTests
+
+      - name: Start app and check API
+        run: |
+          java -jar target/tool-rental-1.0.0.jar > app.log 2>&1 &
+
+          # ждём запуск до двух минут
+          for i in $(seq 1 60); do
+            curl -s -o /dev/null http://localhost:8080/tools && break
+            sleep 2
+          done
+
+          BASE=http://localhost:8080
+          fail() { echo "FAIL: $1"; exit 1; }
+
+          echo "1. Каталог открыт без токена"
+          code=$(curl -s -o /dev/null -w "%{http_code}" $BASE/tools)
+          [ "$code" = "200" ] || fail "GET /tools вернул $code"
+
+          echo "2. Рейтинг пользователя 2"
+          curl -s $BASE/users/2/rating | tee rating.json
+          echo
+          grep -q '"averageRating":4.5' rating.json || fail "ожидался рейтинг 4.5"
+
+          echo "3. Отзывы о пользователе 2"
+          n=$(curl -s $BASE/users/2/reviews | jq length)
+          [ "$n" = "2" ] || fail "ожидалось 2 отзыва, получено $n"
+
+          echo "4. Вход арендатора"
+          TOKEN=$(curl -s -X POST $BASE/auth/login -H 'Content-Type: application/json' \
+            -d '{"email":"renter@example.com","password":"password123"}' | jq -r .accessToken)
+          [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ] || fail "не удалось войти"
+
+          echo "5. Жалоба без токена отклоняется"
+          code=$(curl -s -o /dev/null -w "%{http_code}" -X POST $BASE/reviews/3/report \
+            -H 'Content-Type: application/json' -d '{"reason":"FAKE"}')
+          [ "$code" = "401" ] || fail "жалоба без токена вернула $code, ожидалось 401"
+
+          echo "6. Жалоба на отзыв 3"
+          code=$(curl -s -o /dev/null -w "%{http_code}" -X POST $BASE/reviews/3/report \
+            -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+            -d '{"reason":"FAKE","details":"тест"}')
+          [ "$code" = "201" ] || fail "жалоба вернула $code, ожидалось 201"
+
+          echo "7. Повторная жалоба отклоняется"
+          code=$(curl -s -o /dev/null -w "%{http_code}" -X POST $BASE/reviews/3/report \
+            -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+            -d '{"reason":"FAKE"}')
+          [ "$code" = "409" ] || fail "повторная жалоба вернула $code, ожидалось 409"
+
+          echo "8. Расчёт стоимости аренды"
+          total=$(curl -s -X POST $BASE/bookings/calculate \
+            -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+            -d '{"toolId":1,"startDate":"2026-12-01","endDate":"2026-12-03","deliveryType":"DELIVERY"}' | jq .totalPrice)
+          [ "$total" = "7900" ] || fail "ожидалось 7900, получено $total"
+
+          echo "ВСЕ ПРОВЕРКИ ПРОШЛИ"
+
+      - name: Лог приложения (при ошибке)
+        if: failure()
+        run: cat app.log
