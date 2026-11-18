@@ -69,10 +69,11 @@ jobs:
           [ "$code" = "409" ] || fail "повторная жалоба вернула $code, ожидалось 409"
 
           echo "8. Расчёт стоимости аренды"
-          total=$(curl -s -X POST $BASE/bookings/calculate \
+          curl -s -X POST $BASE/bookings/calculate \
             -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-            -d '{"toolId":1,"startDate":"2026-12-01","endDate":"2026-12-03","deliveryType":"DELIVERY"}' | jq .totalPrice)
-          [ "$total" = "7900" ] || fail "ожидалось 7900, получено $total"
+            -d '{"toolId":1,"startDate":"2026-12-01","endDate":"2026-12-03","deliveryType":"DELIVERY"}' | tee calc.json
+          echo
+          [ "$(jq '.totalPrice == 7900' calc.json)" = "true" ] || fail "ожидалось 7900"
 
           echo "ВСЕ ПРОВЕРКИ ПРОШЛИ"
 
