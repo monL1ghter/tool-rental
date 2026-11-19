@@ -24,11 +24,12 @@ jobs:
         run: |
           java -jar target/tool-rental-1.0.0.jar > app.log 2>&1 &
 
-          # ждём запуск до двух минут
+          # ждём, пока приложение полностью запустится и создаст тестовые данные
           for i in $(seq 1 60); do
-            curl -s -o /dev/null http://localhost:8080/tools && break
+            grep -q "Started ToolRentalApplication" app.log && break
             sleep 2
           done
+          grep -q "Started ToolRentalApplication" app.log || { echo "Приложение не запустилось"; cat app.log; exit 1; }
 
           BASE=http://localhost:8080
           fail() { echo "FAIL: $1"; exit 1; }
