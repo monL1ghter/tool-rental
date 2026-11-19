@@ -27,6 +27,10 @@ import com.toolrental.repository.UserRepository;
 
 import jakarta.persistence.criteria.Predicate;
 
+/**
+ * Работа с каталогом: поиск с фильтрами и сортировкой, похожие, проверка занятости дат,
+ * а также добавление, изменение и удаление инструментов арендодателем.
+ */
 @Service
 @Transactional
 public class ToolService {

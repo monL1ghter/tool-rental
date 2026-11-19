@@ -29,6 +29,7 @@ import com.toolrental.service.ToolService;
 
 import jakarta.validation.Valid;
 
+// Каталог инструментов. Просмотр (GET) открыт без токена, добавление и изменение только для LANDLORD и ADMIN.
 @RestController
 @RequestMapping("/tools")
 public class ToolController {
@@ -61,21 +62,25 @@ public class ToolController {
                 sort, page, size);
     }
 
+    // Десять самых популярных инструментов (по числу завершённых аренд).
     @GetMapping("/popular")
     public List<ToolResponse> popular() {
         return toolService.popular();
     }
 
+    // Десять последних добавленных инструментов.
     @GetMapping("/new")
     public List<ToolResponse> newest() {
         return toolService.newest();
     }
 
+    // Карточка инструмента.
     @GetMapping("/{id}")
     public ToolResponse getById(@PathVariable Long id) {
         return toolService.getById(id);
     }
 
+    // Свободен ли инструмент в период from..to. Даты в формате 2026-12-01.
     @GetMapping("/{id}/availability")
     public AvailabilityResponse availability(@PathVariable Long id,
                                              @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
@@ -83,11 +88,13 @@ public class ToolController {
         return toolService.availability(id, from, to);
     }
 
+    // Отзывы об инструменте.
     @GetMapping("/{id}/reviews")
     public List<ReviewResponse> reviews(@PathVariable Long id) {
         return reviewService.getToolReviews(id);
     }
 
+    // Похожие инструменты: та же категория.
     @GetMapping("/{id}/similar")
     public List<ToolResponse> similar(@PathVariable Long id) {
         return toolService.similar(id);
@@ -95,18 +102,21 @@ public class ToolController {
 
     // ---------- Для арендодателя ----------
 
+    // Добавить инструмент: владельцем становится вошедший пользователь.
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ToolResponse create(@AuthenticationPrincipal Long userId, @Valid @RequestBody ToolRequest request) {
         return toolService.create(userId, request);
     }
 
+    // Изменить инструмент, может только его владелец или администратор.
     @PutMapping("/{id}")
     public ToolResponse update(@AuthenticationPrincipal Long userId, @PathVariable Long id,
                                @Valid @RequestBody ToolRequest request) {
         return toolService.update(userId, id, request);
     }
 
+    // Удалить инструмент. Если по нему были брони, удалить нельзя (409): его можно скрыть, поставив available=false.
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@AuthenticationPrincipal Long userId, @PathVariable Long id) {

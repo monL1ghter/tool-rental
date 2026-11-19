@@ -21,6 +21,8 @@ import com.toolrental.service.UserService;
 
 import jakarta.validation.Valid;
 
+// Профиль пользователя, а также отзывы и рейтинг пользователя.
+// /users/{id}/reviews и /users/{id}/rating открыты без токена.
 @RestController
 @RequestMapping("/users")
 public class UserController {
@@ -33,17 +35,20 @@ public class UserController {
         this.reviewService = reviewService;
     }
 
+    // Мой профиль.
     @GetMapping("/me")
     public UserResponse getProfile(@AuthenticationPrincipal Long userId) {
         return userService.getProfile(userId);
     }
 
+    // Изменить мой профиль (ФИО, телефон, адрес).
     @PutMapping("/me")
     public UserResponse updateProfile(@AuthenticationPrincipal Long userId,
                                       @Valid @RequestBody UpdateProfileRequest request) {
         return userService.updateProfile(userId, request);
     }
 
+    // Стать арендодателем. Роль внутри JWT, поэтому сразу возвращается новая пара токенов.
     @PostMapping("/me/become-landlord")
     public AuthResponse becomeLandlord(@AuthenticationPrincipal Long userId) {
         return userService.becomeLandlord(userId);

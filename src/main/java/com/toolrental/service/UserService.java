@@ -11,6 +11,9 @@ import com.toolrental.entity.User;
 import com.toolrental.exception.ApiException;
 import com.toolrental.repository.UserRepository;
 
+/**
+ * Профиль пользователя: просмотр, изменение и переход из арендатора в арендодателя.
+ */
 @Service
 @Transactional
 public class UserService {

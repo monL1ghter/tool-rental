@@ -27,6 +27,7 @@ import com.toolrental.service.ReviewService;
 
 import jakarta.validation.Valid;
 
+// Отзывы, фото к отзывам и жалобы. Чтение (GET) открыто всем, остальное требует токен.
 @RestController
 @RequestMapping("/reviews")
 public class ReviewController {
@@ -37,6 +38,7 @@ public class ReviewController {
         this.reviewService = reviewService;
     }
 
+    // Оставить отзыв. Можно только по завершённой аренде и один раз от каждого участника.
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ReviewResponse create(@AuthenticationPrincipal Long userId,
@@ -51,23 +53,27 @@ public class ReviewController {
         return reviewService.list(toolId, userId);
     }
 
+    // Один отзыв по id.
     @GetMapping("/{id}")
     public ReviewResponse getById(@PathVariable Long id) {
         return reviewService.getById(id);
     }
 
+    // Изменить свой отзыв (оценку и/или текст).
     @PatchMapping("/{id}")
     public ReviewResponse update(@AuthenticationPrincipal Long userId, @PathVariable Long id,
                                  @Valid @RequestBody UpdateReviewRequest request) {
         return reviewService.update(userId, id, request);
     }
 
+    // Удалить отзыв: его автор или администратор.
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
         reviewService.delete(userId, id);
     }
 
+    // Загрузить фото к своему отзыву (JPEG или PNG, до 5 штук). Запрос в формате multipart/form-data, поле file.
     @PostMapping(value = "/{id}/photos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public PhotoResponse addPhoto(@AuthenticationPrincipal Long userId, @PathVariable Long id,
@@ -75,6 +81,7 @@ public class ReviewController {
         return reviewService.addPhoto(userId, id, file);
     }
 
+    // Удалить фото из своего отзыва.
     @DeleteMapping("/{id}/photos/{photoId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deletePhoto(@AuthenticationPrincipal Long userId, @PathVariable Long id,

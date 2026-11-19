@@ -25,6 +25,8 @@ import com.toolrental.service.BookingService;
 
 import jakarta.validation.Valid;
 
+// Бронирование: создание, изменение, подтверждение, продление, отмена, выдача и возврат инструмента.
+// Все методы требуют токен. Кто и что может делать, проверяет BookingService.
 @RestController
 @RequestMapping("/bookings")
 public class BookingController {
@@ -35,6 +37,7 @@ public class BookingController {
         this.bookingService = bookingService;
     }
 
+    // Создать бронь (статус PENDING). Проверяются даты, занятость инструмента и считается стоимость.
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public BookingResponse create(@AuthenticationPrincipal Long userId,
@@ -50,37 +53,44 @@ public class BookingController {
         return bookingService.list(userId, role, status);
     }
 
+    // Предварительный расчёт стоимости без создания брони.
     @PostMapping("/calculate")
     public PriceResponse calculate(@Valid @RequestBody CalculateRequest request) {
         return bookingService.calculate(request);
     }
 
+    // Детали брони. Доступны только арендатору и арендодателю этой брони.
     @GetMapping("/{id}")
     public BookingResponse getById(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
         return bookingService.getById(userId, id);
     }
 
+    // Стоимость уже созданной брони (цены берутся те, что зафиксированы при бронировании).
     @GetMapping("/{id}/price")
     public PriceResponse getPrice(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
         return bookingService.getPrice(userId, id);
     }
 
+    // Изменить бронь до подтверждения (даты, доставка, оплата). Меняются только переданные поля.
     @PatchMapping("/{id}")
     public BookingResponse update(@AuthenticationPrincipal Long userId, @PathVariable Long id,
                                   @RequestBody UpdateBookingRequest request) {
         return bookingService.update(userId, id, request);
     }
 
+    // Арендодатель подтверждает бронь: PENDING -> CONFIRMED.
     @PostMapping("/{id}/confirm")
     public BookingResponse confirm(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
         return bookingService.confirm(userId, id);
     }
 
+    // Отмена брони арендатором или арендодателем, сумма возврата считается по правилам из README.
     @PostMapping("/{id}/cancel")
     public BookingResponse cancel(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
         return bookingService.cancel(userId, id);
     }
 
+    // Продлить аренду: новая дата окончания должна быть позже текущей, а даты свободны.
     @PostMapping("/{id}/extend")
     public BookingResponse extend(@AuthenticationPrincipal Long userId, @PathVariable Long id,
                                   @Valid @RequestBody ExtendRequest request) {
